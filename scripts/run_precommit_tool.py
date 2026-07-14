@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Run Python pre-commit tools with retries for transient Windows launch errors."""
+"""Run Python pre-commit tools with retries for transient Windows launch
+errors."""
 
 from __future__ import annotations
 
 import os
-import runpy
+import subprocess
 import sys
 import time
 from collections.abc import Sequence
-from contextlib import redirect_stderr, redirect_stdout
-from io import StringIO
 from typing import NamedTuple
 
-MAX_ATTEMPTS = 8
+MAX_ATTEMPTS = 12
 TRANSIENT_RETURN_CODES = {-1, 3221225477, 3221225501, 4294967295}
 TRANSIENT_WINDOWS_ERRORS = ("[WinError 5]", "PermissionError")
 
@@ -26,7 +25,8 @@ class ToolResult(NamedTuple):
 
 
 def has_transient_windows_error(output: str) -> bool:
-    """Return True when a tool failed because Windows temporarily blocked a process."""
+    """Return True when a tool failed because Windows temporarily blocked a
+    process."""
     return sys.platform == "win32" and any(
         error in output for error in TRANSIENT_WINDOWS_ERRORS
     )
@@ -37,40 +37,26 @@ def has_transient_windows_return_code(return_code: int) -> bool:
     return sys.platform == "win32" and return_code in TRANSIENT_RETURN_CODES
 
 
-def exit_code(error: SystemExit) -> int:
-    """Convert SystemExit code values to process-style integer codes."""
-    if error.code is None:
-        return 0
-    if isinstance(error.code, int):
-        return error.code
-    return 1
-
-
 def run_module(args: Sequence[str]) -> ToolResult:
-    """Run the requested module with the current Python interpreter."""
-    module, *module_args = args
-    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-    os.environ.setdefault("PYTHONUTF8", "1")
-
-    old_argv = sys.argv[:]
-    stdout = StringIO()
-    stderr = StringIO()
-    try:
-        sys.argv = [f"{sys.executable} -m {module}", *module_args]
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            try:
-                runpy.run_module(module, run_name="__main__")
-            except SystemExit as error:
-                return ToolResult(
-                    exit_code(error), stderr.getvalue(), stdout.getvalue()
-                )
-    finally:
-        sys.argv = old_argv
-    return ToolResult(0, stderr.getvalue(), stdout.getvalue())
+    """Run the requested module in a child process so crashes can be
+    retried."""
+    env = os.environ.copy()
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    env.setdefault("PYTHONUTF8", "1")
+    result = subprocess.run(
+        [sys.executable, "-m", *args],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+        errors="replace",
+    )
+    return ToolResult(result.returncode, result.stderr, result.stdout)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run a Python module and retry only transient Windows permission failures."""
+    """Run a Python module and retry only transient Windows permission
+    failures."""
     args = list(sys.argv[1:] if argv is None else argv)
     if not args:
         print("usage: run_precommit_tool.py MODULE [ARGS ...]", file=sys.stderr)
@@ -82,7 +68,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = run_module(args)
         except PermissionError as error:
             last_output = f"PermissionError: {error}"
-            result = None
         else:
             last_output = f"{result.stdout}\n{result.stderr}"
             is_transient = has_transient_windows_error(

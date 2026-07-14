@@ -5,6 +5,7 @@ repos:
         name: jupytext
         entry: python scripts/run_precommit_tool.py jupytext
         language: system
+        require_serial: true
         types: [jupyter]
         args:
           - --from=ipynb
@@ -18,6 +19,7 @@ repos:
         name: docformatter
         entry: python scripts/run_precommit_tool.py docformatter
         language: system
+        require_serial: true
         types: [python]
         args:
           - --in-place
@@ -28,12 +30,14 @@ repos:
         name: black
         entry: python scripts/run_precommit_tool.py black
         language: system
+        require_serial: true
         types: [python]
 
       - id: isort
         name: isort
         entry: python scripts/run_precommit_tool.py isort
         language: system
+        require_serial: true
         types: [python]
         args:
           - --profile=black
@@ -43,6 +47,7 @@ repos:
         name: pyupgrade
         entry: python scripts/run_precommit_tool.py pyupgrade
         language: system
+        require_serial: true
         types: [python]
         args:
           - --py39-plus
@@ -116,6 +121,7 @@ repos:
           - jupyter
           - markdown
         args:
+          - --cache-dir=nul
           - --ignore-missing-imports
           - --strict
 
@@ -123,6 +129,7 @@ repos:
         name: codespell
         entry: python scripts/run_precommit_tool.py codespell_lib
         language: system
+        require_serial: true
         args:
           - --ignore-regex=^\s*"image\/(jpeg|png|gif|bmp|tiff)":\s.*
           - --ignore-regex=[A-Za-z0-9+/]{100,}
@@ -132,6 +139,7 @@ repos:
         name: flake8
         entry: python scripts/run_precommit_tool.py flake8
         language: system
+        require_serial: true
         types: [python]
         args:
           - --jobs=1
@@ -141,6 +149,7 @@ repos:
         name: pylint
         entry: python scripts/run_precommit_tool.py pylint
         language: system
+        require_serial: true
         types: [python]
         args:
           - --max-line-length=120
@@ -150,7 +159,9 @@ repos:
         name: mypy
         entry: python scripts/run_precommit_tool.py mypy
         language: system
+        require_serial: true
         types: [python]
         args:
+          - --cache-dir=nul
           - --ignore-missing-imports
           - --strict
