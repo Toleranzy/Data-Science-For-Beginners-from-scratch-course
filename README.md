@@ -189,6 +189,7 @@ This repository is designed for:
 ## 📬 Contact
 
 #### https://SenatorovAI.com
+#### https://t.me/RuslanSenatorov
 
 ---
 
